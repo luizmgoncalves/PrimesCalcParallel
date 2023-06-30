@@ -45,6 +45,9 @@ int main(int argc, char *argv[])
 {
 
     uint prox;
+    clock_t time_i = clock();
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     if (argc != 2)
         return 0;
@@ -57,6 +60,7 @@ int main(int argc, char *argv[])
 
     while (true)
     {
+        cout << "init cicle\n";
         last_prime = PRIMES[curr_i-1];
         prox = last_prime * last_prime;
         if (prox > limit)
@@ -102,9 +106,15 @@ int main(int argc, char *argv[])
             break;
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    double time_taken;
+    time_taken = (end.tv_sec - start.tv_sec) * 1e9;
+    time_taken = (time_taken + (end.tv_nsec - start.tv_nsec)) * 1e-9;
+
     cout << PRIMES[curr_i-1] << " "<< curr_i << endl;
 
-    cout << "\n-----   -----\n\n";
+    cout << "\n----- " << (float)(clock() - time_i)/(float)CLOCKS_PER_SEC << " ticks and " << time_taken << "  -----\n\n";
 
     return 0;
 }
