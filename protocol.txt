@@ -3,5 +3,10 @@
 [init2, end2]
 ... (amount of workers times)
 
-[0][amount of primes] //response to send primes calculated
+[0][amount of primes] //client response to send primes calculated
 [prime1][prime2][prime3]...
+
+[1][amount of primes] //server updating primes in all clients
+[prime1][prime2][prime3]...
+
+[2][amount of primes] //server killing clients

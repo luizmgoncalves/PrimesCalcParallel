@@ -60,9 +60,8 @@ int main(int argc, char const *argv[])
 
     cout << "Setted limit to " << limit << endl;
 
-    PRIMES = new uint64_t[int((float)limit / (float)(log(limit) - 1.3))];
-    PRIMES[0] = 2;
-    curr_i = 1;
+    PRIMES = new uint64_t[int((float)limit / (float)(log(limit) - 1.3))] {2, 3, 5, 7, 11};;
+    curr_i = 5;
 
     uint64_t *buffer;
 
@@ -71,10 +70,7 @@ int main(int argc, char const *argv[])
         buffer = new uint64_t[2];
         read(client, buffer, 2 * sizeof(uint64_t));
 
-        cout << "Received: " << buffer[0] << " " << buffer[1] << endl;
-
-        sleep(1);
-
+        //cout << "Received: " << buffer[0] << " " << buffer[1] << endl;
         if (buffer[0] == 0)
         {
             uint64_t amount_workers = buffer[1];
@@ -90,7 +86,7 @@ int main(int argc, char const *argv[])
 
             for (uint64_t i = 0; i < amount_workers; i++)
             {
-                cout << "New worker: " << buffer[2 * i] << " -> " << buffer[2 * i + 1] << endl;
+                //cout << "New worker: " << buffer[2 * i] << " -> " << buffer[2 * i + 1] << endl;
                 workers[i] = std::thread(calc, buffer[2 * i], buffer[2 * i + 1], &workers_result[i]);
             }
 
@@ -116,15 +112,25 @@ int main(int argc, char const *argv[])
 
                 for (auto it = primes_computed->begin(); it != primes_computed->end(); it++)
                 {
-                     cout << "Achei o primo: "<< *it << endl;
+                    if(!(*it)){cout << "zero "; break;}
+                    cout << "Achei o primo: "<< *it << endl;
                     buffer[buffer_i++] = *it;
                 }
             }
 
-            send(client, buffer, response_buffer_size*sizeof(int64_t), 0);
+            write(client, buffer, response_buffer_size*sizeof(int64_t));
         }
         if (buffer[0] == 1){
-            
+            uint64_t amount_primes = buffer[1];
+
+            delete buffer;
+
+            read(client, &PRIMES[curr_i], sizeof(uint64_t) * amount_primes);
+
+            curr_i += amount_primes;
+        }
+        if (buffer[0] == 3){
+            break;
         }
     }
     close(client);

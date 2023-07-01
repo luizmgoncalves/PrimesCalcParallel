@@ -17,7 +17,7 @@ uint64_t *PRIMES; // store the primes calculated
 
 uint64_t curr_i;
 
-#define STEP 10
+#define STEP 1000
 
 #define PROTOCOL_FLAG ~ (uint64_t)0
 
@@ -30,8 +30,6 @@ int main(int argc, char *argv[])
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-
-    char hello[100];
 
     // Creating socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -137,7 +135,7 @@ int main(int argc, char *argv[])
 
         cout << "Calculating primes between "<< last_prime+1 <<" and " << prox << ", needed " << amount_workers <<" workers" << endl;
 
-        uint64_t acc1 = last_prime + 1, acc2 = acc1 + STEP;
+        uint64_t acc1 = last_prime + 1, acc2 = acc1 + STEP - 1;
 
         if (acc2 > prox)
             acc2 = prox;
@@ -154,39 +152,66 @@ int main(int argc, char *argv[])
             buffer = new uint64_t[buffer_size];
             for (uint64_t j = 0; j < amount_workers_per_client[i]; j++)
             {
-                cout << "acc1: "<< acc1 <<" acc2: " << acc2 << endl;
+                //cout << "acc1: "<< acc1 <<" acc2: " << acc2 << endl;
                 buffer[j*2] = acc1;
                 buffer[j*2 + 1] = acc2;
 
                 acc1 = acc2 + 1;
-                acc2 = acc1 + STEP;
+                acc2 = acc1 + STEP - 1;
                 if (acc2 > prox) acc2 = prox;
             }
 
             send(clients[i], buffer, buffer_size*sizeof(uint64_t), 0);
             delete buffer;
         }
-        /*
-        for (int i = 0; i < amount_workers; i++)
-        {
-            // cout << i+1 << "/" << amount_workers << endl;
-        }
 
-        for (int i = 0; i < amount_workers; i++)
-        {
-            list<uint64_t> *primes_computed = workers_result[i];
+        uint64_t last_curr_i = curr_i;
 
-            for (auto it = primes_computed->begin(); it != primes_computed->end(); it++)
-            {
-                // cout << *it << endl;
-                PRIMES[curr_i++] = *it;
+        for (uint i = 0; i < clients.size(); i++){
+            buffer = new uint64_t[2];
+
+            read(clients[i], buffer, 2 * sizeof(uint64_t));
+
+            uint64_t amount_primes = buffer[1];
+            delete buffer;
+            buffer = new uint64_t[amount_primes];
+
+
+            read(clients[i], buffer, amount_primes * sizeof(uint64_t));
+
+            cout << i <<"th client founded " << amount_primes << " primes" << endl;
+
+            for (uint64_t j=0; j< amount_primes; j++){
+                //cout << i << "-> "<< buffer[j] << " is prime" << endl;
+                if(!buffer[j]){
+                    cout << "zero in " << j << " position or " << j*sizeof(uint64_t) << " byte"<< endl;
+                    break;
+                }
+                PRIMES[curr_i++] = buffer[j];
             }
+            delete buffer;
         }
+
+        for (uint i = 0; i < clients.size(); i++){
+            uint64_t amount_primes = curr_i - last_curr_i;
+
+            buffer = new uint64_t[2]{1, amount_primes};
+            send(clients[i], buffer, 2*sizeof(uint64_t), 0);
+            delete buffer;
+
+            cout << "Sending "<< amount_primes <<  " new primes to" << i << " th client" << endl;
+            send(clients[i], &PRIMES[last_curr_i], amount_primes*sizeof(uint64_t), 0);
+        }
+
 
         if (prox == limit)
             break;
-        */
-       while (true);
+        
+    }
+
+    for (uint i = 0; i < clients.size(); i++){
+        buffer = new uint64_t[2]{3};
+        send(clients[i], buffer, 2*sizeof(uint64_t), 0);
     }
 
     clock_gettime(CLOCK_MONOTONIC, &end);
