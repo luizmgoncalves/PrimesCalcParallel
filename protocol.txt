@@ -1,0 +1,7 @@
+[0][amount of workers] // command to make clients trigger new workers
+[init1, end1]
+[init2, end2]
+... (amount of workers times)
+
+[0][amount of primes] //response to send primes calculated
+[prime1][prime2][prime3]...
