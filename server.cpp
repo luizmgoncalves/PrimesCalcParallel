@@ -8,8 +8,10 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <fstream>
 
 #define PORT 8080
+#define PACKAGE_SIZE 1000
 
 using namespace std;
 
@@ -17,11 +19,15 @@ uint64_t *PRIMES; // store the primes calculated
 
 uint64_t curr_i;
 
-#define STEP 1000
+#define STEP 100000
 
-#define PROTOCOL_FLAG ~ (uint64_t)0
+#define PROTOCOL_FLAG ~(uint64_t)0
 
 #define CLIENTS_AMOUNT 3
+
+void send_by_packages(int socket, uint64_t *buffer, uint64_t package_len, uint64_t total_len);
+
+void recv_by_packages(int socket, uint64_t *buffer, uint64_t package_len, uint64_t total_len);
 
 int main(int argc, char *argv[])
 {
@@ -108,7 +114,7 @@ int main(int argc, char *argv[])
 
     cout << "done..." << endl;
 
-    PRIMES = new uint64_t[int((float)limit / (float)(log(limit) - 1.3))] {2, 3, 5, 7, 11};
+    PRIMES = new uint64_t[int((float)limit / (float)(log(limit) - 1.3))]{2, 3, 5, 7, 11};
 
     curr_i = 5;
 
@@ -133,7 +139,7 @@ int main(int argc, char *argv[])
             amount_workers_per_client[i] = amount_workers / CLIENTS_AMOUNT;
         }
 
-        cout << "Calculating primes between "<< last_prime+1 <<" and " << prox << ", needed " << amount_workers <<" workers" << endl;
+        cout << "Calculating primes between " << last_prime + 1 << " and " << prox << ", needed " << amount_workers << " workers" << endl;
 
         uint64_t acc1 = last_prime + 1, acc2 = acc1 + STEP - 1;
 
@@ -142,32 +148,34 @@ int main(int argc, char *argv[])
 
         for (uint i = 0; i < clients.size(); i++)
         {
-            cout << "Sending "<< amount_workers_per_client[i] <<" workers to " << i << "th client" << endl;
+            cout << "Sending " << amount_workers_per_client[i] << " workers to " << i << "th client" << endl;
 
             buffer = new uint64_t[2]{0, amount_workers_per_client[i]};
-            send(clients[i], buffer, 2*sizeof(uint64_t), 0);
+            send(clients[i], buffer, 2 * sizeof(uint64_t), 0);
             delete buffer;
 
             uint64_t buffer_size = amount_workers_per_client[i] * 2;
             buffer = new uint64_t[buffer_size];
             for (uint64_t j = 0; j < amount_workers_per_client[i]; j++)
             {
-                //cout << "acc1: "<< acc1 <<" acc2: " << acc2 << endl;
-                buffer[j*2] = acc1;
-                buffer[j*2 + 1] = acc2;
+                // cout << "acc1: "<< acc1 <<" acc2: " << acc2 << endl;
+                buffer[j * 2] = acc1;
+                buffer[j * 2 + 1] = acc2;
 
                 acc1 = acc2 + 1;
                 acc2 = acc1 + STEP - 1;
-                if (acc2 > prox) acc2 = prox;
+                if (acc2 > prox)
+                    acc2 = prox;
             }
 
-            send(clients[i], buffer, buffer_size*sizeof(uint64_t), 0);
+            send_by_packages(clients[i], buffer, PACKAGE_SIZE, buffer_size);
             delete buffer;
         }
 
         uint64_t last_curr_i = curr_i;
 
-        for (uint i = 0; i < clients.size(); i++){
+        for (uint i = 0; i < clients.size(); i++)
+        {
             buffer = new uint64_t[2];
 
             read(clients[i], buffer, 2 * sizeof(uint64_t));
@@ -176,15 +184,15 @@ int main(int argc, char *argv[])
             delete buffer;
             buffer = new uint64_t[amount_primes];
 
+            cout << i << "th client founded " << amount_primes << " primes" << endl;
 
-            read(clients[i], buffer, amount_primes * sizeof(uint64_t));
+            recv_by_packages(clients[i], buffer, PACKAGE_SIZE, amount_primes);
 
-            cout << i <<"th client founded " << amount_primes << " primes" << endl;
-
-            for (uint64_t j=0; j< amount_primes; j++){
-                //cout << i << "-> "<< buffer[j] << " is prime" << endl;
-                if(!buffer[j]){
-                    cout << "zero in " << j << " position or " << j*sizeof(uint64_t) << " byte"<< endl;
+            for (uint64_t j = 0; j < amount_primes; j++)
+            {
+                if (!buffer[j])
+                {
+                    cout << "zero in " << j << " position or " << j * sizeof(uint64_t) << " byte" << endl;
                     break;
                 }
                 PRIMES[curr_i++] = buffer[j];
@@ -192,26 +200,31 @@ int main(int argc, char *argv[])
             delete buffer;
         }
 
-        for (uint i = 0; i < clients.size(); i++){
+        for (uint i = 0; i < clients.size(); i++)
+        {
             uint64_t amount_primes = curr_i - last_curr_i;
 
             buffer = new uint64_t[2]{1, amount_primes};
-            send(clients[i], buffer, 2*sizeof(uint64_t), 0);
+            send(clients[i], buffer, 2 * sizeof(uint64_t), 0);
             delete buffer;
 
-            cout << "Sending "<< amount_primes <<  " new primes to" << i << " th client" << endl;
-            send(clients[i], &PRIMES[last_curr_i], amount_primes*sizeof(uint64_t), 0);
+            cout << "Sending " << amount_primes << " new primes to" << i << " th client" << endl;
+            send_by_packages(clients[i], &PRIMES[last_curr_i], PACKAGE_SIZE, amount_primes);
         }
-
 
         if (prox == limit)
             break;
-        
     }
 
-    for (uint i = 0; i < clients.size(); i++){
+    for (uint i = 0; i < clients.size(); i++)
+    {
         buffer = new uint64_t[2]{3};
-        send(clients[i], buffer, 2*sizeof(uint64_t), 0);
+        send(clients[i], buffer, 2 * sizeof(uint64_t), 0);
+    }
+
+    for (int client : clients)
+    {
+        close(client);
     }
 
     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -224,11 +237,48 @@ int main(int argc, char *argv[])
 
     cout << "\n----- " << (float)(clock() - time_i) / (float)CLOCKS_PER_SEC << " ticks and " << time_taken << "  -----\n\n";
 
-    for (int client: clients){
-        close(client);
+    cout << "Writing primes on primes.txt file" << endl;
+
+    ofstream PrimesFile("primes.txt");
+
+    for (uint64_t i = 0; i < curr_i; i++)
+    {
+        cout << PRIMES[i] << endl;
+        PrimesFile << PRIMES[i] << endl;
     }
+    
+    PrimesFile.close();
 
     shutdown(server_fd, SHUT_RDWR);
 
     return 0;
+}
+
+void send_by_packages(int socket, uint64_t *buffer, uint64_t package_len, uint64_t total_len)
+{
+    uint64_t acc = 0;
+    uint64_t cur_l;
+    char ok;
+    for (uint64_t i = 0; acc < total_len; i++)
+    {
+        cur_l = (total_len - acc) >= package_len ? package_len * sizeof(uint64_t) : (total_len - acc) * sizeof(uint64_t);
+        write(socket, &buffer[i * package_len], cur_l);
+
+        read(socket, &ok, 1);
+        acc += package_len;
+    }
+}
+
+void recv_by_packages(int socket, uint64_t *buffer, uint64_t package_len, uint64_t total_len)
+{
+    uint64_t acc = 0;
+    uint64_t cur_l;
+    char ok;
+    for (uint64_t i = 0; acc < total_len; i++)
+    {
+        cur_l = (total_len - acc) >= package_len ? package_len * sizeof(uint64_t) : (total_len - acc) * sizeof(uint64_t);
+        read(socket, &buffer[i * package_len], cur_l);
+        write(socket, "k", 1);
+        acc += package_len;
+    }
 }

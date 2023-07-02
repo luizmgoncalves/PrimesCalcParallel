@@ -13,13 +13,17 @@
 
 using namespace std;
 
-#define PROTOCOL_FLAG ~(uint64_t)0
+#define PACKAGE_SIZE 1000
 
 uint64_t *PRIMES;
 
 uint64_t curr_i;
 
 void calc(uint64_t init, uint64_t end, std::list<uint64_t> **result);
+
+void send_by_packages(int socket, uint64_t * buffer, uint64_t package_len, uint64_t total_len);
+
+void recv_by_packages(int socket, uint64_t * buffer, uint64_t package_len, uint64_t total_len);
 
 int main(int argc, char const *argv[])
 {
@@ -70,7 +74,7 @@ int main(int argc, char const *argv[])
         buffer = new uint64_t[2];
         read(client, buffer, 2 * sizeof(uint64_t));
 
-        //cout << "Received: " << buffer[0] << " " << buffer[1] << endl;
+        cout << "Received: " << buffer[0] << " " << buffer[1] << endl;
         if (buffer[0] == 0)
         {
             uint64_t amount_workers = buffer[1];
@@ -78,7 +82,8 @@ int main(int argc, char const *argv[])
             delete buffer;
 
             buffer = new uint64_t[amount_workers * 2];
-            read(client, buffer, sizeof(uint64_t) * 2 * amount_workers);
+
+            recv_by_packages(client, buffer, PACKAGE_SIZE, 2 * amount_workers);
 
             thread workers[amount_workers];
 
@@ -112,20 +117,20 @@ int main(int argc, char const *argv[])
 
                 for (auto it = primes_computed->begin(); it != primes_computed->end(); it++)
                 {
-                    if(!(*it)){cout << "zero "; break;}
-                    cout << "Achei o primo: "<< *it << endl;
+                    //if(!(*it)){cout << "zero "; break;}
+                    //cout << "Achei o primo: "<< *it << endl;
                     buffer[buffer_i++] = *it;
                 }
             }
 
-            write(client, buffer, response_buffer_size*sizeof(int64_t));
+            send_by_packages(client, buffer, PACKAGE_SIZE, response_buffer_size);
         }
         if (buffer[0] == 1){
             uint64_t amount_primes = buffer[1];
 
             delete buffer;
 
-            read(client, &PRIMES[curr_i], sizeof(uint64_t) * amount_primes);
+            recv_by_packages(client, &PRIMES[curr_i], PACKAGE_SIZE, amount_primes);
 
             curr_i += amount_primes;
         }
@@ -135,6 +140,31 @@ int main(int argc, char const *argv[])
     }
     close(client);
     return 0;
+}
+
+void send_by_packages(int socket, uint64_t * buffer, uint64_t package_len, uint64_t total_len){
+    uint64_t acc=0;
+    uint64_t cur_l;
+    char ok;
+    for(uint64_t i=0; acc < total_len; i++){
+        cur_l = (total_len - acc)>=package_len ? package_len*sizeof(uint64_t) : (total_len - acc)*sizeof(uint64_t);
+        write(socket, &buffer[i*package_len], cur_l);
+
+        read(socket, &ok, 1);
+        acc += package_len;
+    }
+}
+
+void recv_by_packages(int socket, uint64_t * buffer, uint64_t package_len, uint64_t total_len){
+    uint64_t acc=0;
+    uint64_t cur_l;
+    char ok;
+    for(uint64_t i=0; acc < total_len; i++){
+        cur_l = (total_len - acc)>=package_len ? package_len*sizeof(uint64_t) : (total_len - acc)*sizeof(uint64_t);
+        read(socket, &buffer[i*package_len], cur_l);
+        write(socket, "k", 1);
+        acc += package_len;
+    }
 }
 
 void calc(uint64_t init, uint64_t end, std::list<uint64_t> **result)

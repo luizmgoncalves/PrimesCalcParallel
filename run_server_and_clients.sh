@@ -13,7 +13,7 @@ do
 done
 
 
-executar_no_terminal server 0 0 500000
+executar_no_terminal server 0 0 500000000
 sleep 0.5 
 executar_no_terminal client 0 400
 executar_no_terminal client 500 0
