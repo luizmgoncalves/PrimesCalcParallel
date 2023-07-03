@@ -6,24 +6,24 @@
 
 using namespace std;
 
-uint * PRIMES; // store the primes calculated
+uint64_t * PRIMES; // store the primes calculated
 
-uint curr_i = 1;
+uint64_t curr_i = 1;
 
-void calc(unsigned int init, unsigned int end, std::list<unsigned int> * * result)
+void calc(uint64_t init, uint64_t end, std::list<uint64_t> * * result)
 {
-    *result = new std::list<unsigned int>;
+    *result = new std::list<uint64_t>;
 
     if (init % 2 == 0)
         init++; // jump if it's odd
 
     bool is_prime = true;
 
-    for (unsigned int cur_n = init; cur_n <= end; cur_n += 2)
+    for (uint64_t cur_n = init; cur_n <= end; cur_n += 2)
     {
         is_prime = true;
 
-        for (uint i=0; i<curr_i && PRIMES[i] <= sqrt(cur_n); i++)
+        for (uint64_t i=0; i<curr_i && PRIMES[i] <= sqrt(cur_n); i++)
         {   
             if (cur_n % PRIMES[i] == 0)
             {
@@ -44,17 +44,18 @@ void calc(unsigned int init, unsigned int end, std::list<unsigned int> * * resul
 int main(int argc, char *argv[])
 {
 
-    uint prox;
+    uint64_t prox;
     clock_t time_i = clock();
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    if (argc != 2)
-        return 0;
+    cout << "Digite até qual número devo calcular primos: ";
 
-    uint limit = atoi(argv[1]), last_prime;
+    uint64_t limit, last_prime;
 
-    PRIMES = new uint[int((float)limit/(float)(log(limit)-1.3))];
+    cin >> limit;
+
+    PRIMES = new uint64_t[int((float)limit/(float)(log(limit)-1.3))];
 
     PRIMES[0] = 2;
 
@@ -66,19 +67,19 @@ int main(int argc, char *argv[])
         if (prox > limit)
             prox = limit;
 
-        uint dif = prox - last_prime;
+        uint64_t dif = prox - last_prime;
 
-        uint amount_workers = dif / STEP + (dif % STEP ? 1 : 0);
+        uint64_t amount_workers = dif / STEP + (dif % STEP ? 1 : 0);
 
         thread workers[amount_workers];
 
-        list<uint> * workers_result[amount_workers];
+        list<uint64_t> * workers_result[amount_workers];
 
-        uint acc1=last_prime + 1, acc2 = acc1 + STEP;
+        uint64_t acc1=last_prime + 1, acc2 = acc1 + STEP;
 
         if(acc2 > prox) acc2 = prox;
 
-        for(int i=0; i< amount_workers; i++){
+        for(uint64_t i=0; i< amount_workers; i++){
             //cout << "New worker: " << i+1 << "/" << amount_workers << "\n";
             workers[i] = std::thread(calc, acc1, acc2, &workers_result[i]);
 
@@ -87,13 +88,13 @@ int main(int argc, char *argv[])
             if(acc2 > prox) acc2 = prox;
         }
 
-        for(int i=0; i< amount_workers; i++){
+        for(uint64_t i=0; i< amount_workers; i++){
             //cout << i+1 << "/" << amount_workers << endl;
             workers[i].join();
         }
 
-        for(int i=0; i< amount_workers; i++){
-            list<uint> *primes_computed = workers_result[i];
+        for(uint64_t i=0; i< amount_workers; i++){
+            list<uint64_t> *primes_computed = workers_result[i];
 
             for (auto it = primes_computed->begin(); it != primes_computed->end(); it++)
             {
