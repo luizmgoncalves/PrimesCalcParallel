@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
                     // cout << *it << endl;
                     PRIMES[curr_i++] = *it;
                 }
+                delete primes_computed;
             }
         }
         if (prox == limit)
