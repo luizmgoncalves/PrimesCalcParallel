@@ -39,21 +39,23 @@ void calc(uint64_t init, uint64_t end, std::list<uint64_t> * * result)
     }
 }
 
-#define STEP 100000
+#define STEP 10000
 
 int main(int argc, char *argv[])
 {
 
     uint64_t prox;
-    clock_t time_i = clock();
+    clock_t time_i;
     struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
 
     cout << "Digite até qual número devo calcular primos: ";
 
     uint64_t limit, last_prime;
 
     cin >> limit;
+
+    time_i = clock();
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     PRIMES = new uint64_t[int((float)limit/(float)(log(limit)-1.3))];
 
